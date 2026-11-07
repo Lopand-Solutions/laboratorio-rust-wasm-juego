@@ -1,4 +1,6 @@
 //! A* en una cuadrícula para un juego web: la parte pesada que pasamos de JavaScript a Rust.
+// Rama inicio: borra esta línea cuando termines; solo calla los avisos de lo que todavía no escribes.
+#![allow(dead_code, unused_imports, unused_variables)]
 
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
@@ -35,9 +37,7 @@ impl Mapa {
 
     /// Distancia de Manhattan: nunca sobrestima con movimientos en 4 direcciones de costo 1.
     fn heuristica(&self, a: u32, b: u32) -> u32 {
-        let (ax, ay) = (a % self.ancho, a / self.ancho);
-        let (bx, by) = (b % self.ancho, b / self.ancho);
-        ax.abs_diff(bx) + ay.abs_diff(by)
+        todo!("Paso 3: distancia de Manhattan entre a y b")
     }
 
     fn vecinas(&self, i: u32) -> impl Iterator<Item = u32> + '_ {
@@ -65,44 +65,7 @@ impl Mapa {
     /// El camino más corto de `desde` a `hasta` (índices y * ancho + x), los dos incluidos.
     /// Vacío si no hay camino. En JS llega como `Uint32Array`.
     pub fn buscar(&self, desde: u32, hasta: u32) -> Vec<u32> {
-        let n = self.celdas.len();
-        if desde as usize >= n || hasta as usize >= n {
-            return Vec::new();
-        }
-        if self.celdas[desde as usize] == PARED || self.celdas[hasta as usize] == PARED {
-            return Vec::new();
-        }
-        let mut costo = vec![u32::MAX; n];
-        let mut previo = vec![SIN_PREVIO; n];
-        // Montículo de mínimos por f = g + h; en empate, el de mayor g (más cerca de la meta).
-        let mut abiertos = BinaryHeap::new();
-        costo[desde as usize] = 0;
-        abiertos.push(Reverse((
-            self.heuristica(desde, hasta),
-            Reverse(0u32),
-            desde,
-        )));
-        while let Some(Reverse((_, Reverse(g), actual))) = abiertos.pop() {
-            if actual == hasta {
-                return self.reconstruir(&previo, hasta);
-            }
-            if g > costo[actual as usize] {
-                continue; // una entrada vieja: ya encontramos algo mejor para esta celda
-            }
-            for v in self.vecinas(actual) {
-                let nuevo = g + 1;
-                if nuevo < costo[v as usize] {
-                    costo[v as usize] = nuevo;
-                    previo[v as usize] = actual;
-                    abiertos.push(Reverse((
-                        nuevo + self.heuristica(v, hasta),
-                        Reverse(nuevo),
-                        v,
-                    )));
-                }
-            }
-        }
-        Vec::new()
+        todo!("Paso 4: A* con un BinaryHeap")
     }
 
     #[wasm_bindgen(getter)]
@@ -118,14 +81,7 @@ impl Mapa {
 
 impl Mapa {
     fn reconstruir(&self, previo: &[u32], hasta: u32) -> Vec<u32> {
-        let mut camino = vec![hasta];
-        let mut i = hasta;
-        while previo[i as usize] != SIN_PREVIO {
-            i = previo[i as usize];
-            camino.push(i);
-        }
-        camino.reverse();
-        camino
+        todo!("Paso 4: recorre `previo` desde la meta hasta el inicio")
     }
 }
 
