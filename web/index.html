@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Persecución: A* en JS o en WASM</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 860px; margin: 1.5rem auto; padding: 0 1rem; }
+    canvas { width: 100%; image-rendering: pixelated; border: 1px solid #ccc; }
+    #medida { font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <h1>Persecución</h1>
+  <p>Haz clic para mover al jugador. Cada cuadro, cada enemigo recalcula su camino con A*.</p>
+  <p>
+    <label><input type="radio" name="motor" value="js" checked> JavaScript</label>
+    <label><input type="radio" name="motor" value="wasm"> Rust (WASM)</label>
+    · enemigos: <input id="enemigos" type="number" value="200" min="1" max="2000">
+    · <span id="medida"></span>
+  </p>
+  <canvas id="lienzo" width="768" height="512"></canvas>
+  <script type="module">
+    import init, { Mapa } from '../pkg/camino.js';
+    import { MapaJS, PARED, generarCeldas, mulberry32 } from '../js/camino.js';
+
+    await init();
+    const ANCHO = 96, ALTO = 64, CELDA = 8;
+    const celdas = generarCeldas(ANCHO, ALTO, 7, 25);
+    const motores = { js: new MapaJS(ANCHO, ALTO, celdas), wasm: new Mapa(ANCHO, ALTO, celdas) };
+    const lienzo = document.getElementById('lienzo');
+    const ctx = lienzo.getContext('2d');
+    const azar = mulberry32(3);
+    const suelo = () => { for (;;) { const i = Math.floor(azar() * celdas.length); if (celdas[i] !== PARED) return i; } };
+
+    let jugador = suelo();
+    let enemigos = [];
+    const ajustarEnemigos = () => {
+      const n = Number(document.getElementById('enemigos').value);
+      while (enemigos.length < n) enemigos.push(suelo());
+      enemigos.length = n;
+    };
+    lienzo.addEventListener('click', (e) => {
+      const r = lienzo.getBoundingClientRect();
+      const x = Math.floor((e.clientX - r.left) / r.width * ANCHO);
+      const y = Math.floor((e.clientY - r.top) / r.height * ALTO);
+      if (celdas[y * ANCHO + x] !== PARED) jugador = y * ANCHO + x;
+    });
+
+    let tiempos = [], cuadro = 0;
+    function paso() {
+      ajustarEnemigos();
+      const motor = motores[document.querySelector('input[name=motor]:checked').value];
+      const inicio = performance.now();
+      enemigos = enemigos.map((e) => {
+        const camino = motor.buscar(e, jugador);
+        return camino.length > 1 ? camino[1] : e; // avanza una casilla hacia el jugador
+      });
+      tiempos.push(performance.now() - inicio);
+      if (tiempos.length > 30) tiempos.shift();
+
+      // Dibuja: suelo, paredes, enemigos y jugador.
+      ctx.fillStyle = '#f4efe6'; ctx.fillRect(0, 0, lienzo.width, lienzo.height);
+      ctx.fillStyle = '#4a3f35';
+      celdas.forEach((c, i) => { if (c === PARED) ctx.fillRect((i % ANCHO) * CELDA, Math.floor(i / ANCHO) * CELDA, CELDA, CELDA); });
+      ctx.fillStyle = '#be123c';
+      for (const e of enemigos) ctx.fillRect((e % ANCHO) * CELDA + 1, Math.floor(e / ANCHO) * CELDA + 1, CELDA - 2, CELDA - 2);
+      ctx.fillStyle = '#1d4ed8';
+      ctx.fillRect((jugador % ANCHO) * CELDA, Math.floor(jugador / ANCHO) * CELDA, CELDA, CELDA);
+
+      if (++cuadro % 10 === 0) {
+        const prom = tiempos.reduce((a, b) => a + b, 0) / tiempos.length;
+        document.getElementById('medida').textContent = `A* por cuadro: ${prom.toFixed(2)} ms`;
+      }
+      setTimeout(() => requestAnimationFrame(paso), 100); // los enemigos avanzan 10 casillas por segundo
+    }
+    paso();
+  </script>
+</body>
+</html>

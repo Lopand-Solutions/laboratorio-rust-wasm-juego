@@ -1,0 +1,5 @@
+# Rust
+target/
+# Lo que genera wasm-pack (se reconstruye con los comandos del README)
+pkg/
+pkg-node/
